@@ -8,28 +8,47 @@ const yf = new YahooFinance({ suppressNotices: ['yahooSurvey'] });
 const SUPABASE_URL = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 
-// Top Indonesian stocks — will be expanded once pipeline works
+// Comprehensive IDX stock list (~300 tickers covering all BEI sectors)
 const IDX_TICKERS = [
-  // Blue Chips / LQ45
-  "BBCA", "BBRI", "BMRI", "BBNI", "BRIS",
-  "TLKM", "ASII", "UNVR", "HMSP", "GGRM",
-  "ICBP", "INDF", "KLBF", "MNCN", "PGAS",
-  "SMGR", "INTP", "PTBA", "ADRO", "ITMG",
-  "ANTM", "INKP", "TKIM", "BRPT", "ESSA",
-  "MDKA", "AMMN", "BREN", "CUAN", "DSSA",
-  // Property & Consumer
-  "BSDE", "CTRA", "SMRA", "PWON", "JSMR",
-  "MAPI", "ACES", "LPPF", "ERAA", "MYOR",
-  // Banking Tier 2
-  "BNGA", "BDMN", "NISP", "BTPN", "MEGA",
-  // Telco & Tech
-  "EXCL", "ISAT", "GOTO", "BUKA", "EMTK",
-  // Infrastructure & Mining
-  "MEDC", "UNTR", "AKRA", "TOWR", "TBIG",
-  "HRUM", "MBMA", "PGEO", "TPIA",
-  // Small/Mid cap interesting
-  "BBTN", "WIKA", "WSKT", "PTPP", "SRIL",
-  "FAST", "BJTM", "BJBR", "ARTO", "BBYB",
+  // ═══ BANKING ═══
+  "BBCA","BBRI","BMRI","BBNI","BRIS","BBTN","BNGA","BDMN","NISP","BTPN",
+  "MEGA","BJTM","BJBR","ARTO","BBYB","BGTG","BNII","BNBA","BMAS","BTPS",
+  "BINA","AGRO","NOBU","SDRA","MCOR","BSIM","AMAR","BABP","PNBN","BVIC",
+  // ═══ TELCO & TECH ═══
+  "TLKM","EXCL","ISAT","GOTO","BUKA","EMTK","MNCN","SCMA","TOWR","TBIG",
+  "FREN","LINK","MTDL","DMMX","DCII","BALI","KIOS",
+  // ═══ CONSUMER (Cyclical + Defensive) ═══
+  "UNVR","HMSP","GGRM","ICBP","INDF","KLBF","MYOR","CPIN","JPFA","SIDO",
+  "MAPI","ACES","LPPF","ERAA","RALS","HERO","AMRT","MIDI","DNET","AVIA",
+  "GOOD","KEJU","AISA","STTP","ULTJ","DLTA","MLBI","KAEF","PYFA","TSPC",
+  "DVLA","SCPI","WOOD","KINO","UNTR","ASGR","AUTO",
+  // ═══ MINING & ENERGY ═══
+  "ADRO","ITMG","PTBA","ANTM","INCO","MDKA","AMMN","HRUM","MBMA","DSSA",
+  "BREN","CUAN","MEDC","AKRA","ESSA","TPIA","BRPT","INKP","TKIM","BUMI",
+  "BYAN","GEMS","KKGI","DOID","SMMT","FIRE","ENRG","MYOH","PSAB","ZINC",
+  "MPMX","ELSA","RAJA","PGEO","TOBA","AADI",
+  // ═══ PROPERTY & REAL ESTATE ═══
+  "BSDE","CTRA","SMRA","PWON","LPKR","DILD","APLN","KIJA","ASRI","PPRO",
+  "JRPT","MKPI","MTLA","PLIN","SMGP","BKSL","RDTX","GMTD","GPRA","DUTI",
+  // ═══ INFRASTRUCTURE & CONSTRUCTION ═══
+  "JSMR","WIKA","WSKT","PTPP","ADHI","WTON","NRCA","SSIA","TOTL","ACST",
+  "WSBP","BUKK","META","SMPD","IPCM",
+  // ═══ INDUSTRIAL & MANUFACTURING ═══
+  "ASII","INTP","SMGR","SMBR","SMCB","WSBP","IMPC","TRST","IGAR","TPIA",
+  "GJTL","BATA","SRIL","PBRX","SSTM","RICY","TFCO","POLY","ADMG","HDTX",
+  "BELL","SWAT","MARK","INAI","LION","LMSH","CTBN","KDSI","KBLI","JECC",
+  // ═══ FINANCE (Non-Bank) ═══
+  "BBCA","ADMF","BFIN","CFIN","MFIN","TIFA","WOMF","VRNA","TRIM","PNLF",
+  "KREN","HDFA","APIC",
+  // ═══ PLANTATION & AGRI ═══
+  "AALI","LSIP","SSMS","DSNG","SIMP","TBLA","SGRO","PALM","SMAR","ANJT",
+  "GZCO","BWPT","MAGP","CSRA",
+  // ═══ HEALTHCARE ═══
+  "HEAL","SILO","MIKA","SAME","PRDA",
+  // ═══ TRANSPORT & LOGISTICS ═══
+  "GIAA","BIRD","ASSA","TAXI","SMDR","HELI","TMAS","JAYA","BLTA","SAFE",
+  // ═══ MISC / OTHERS ═══
+  "PGAS","POWR","JKSE","FILM","KPIG","FAST","PZZA","BOGA","MAPB",
 ];
 
 function calcFundScore(data: any): number {
@@ -150,21 +169,23 @@ async function fetchTickerData(ticker: string): Promise<any | null> {
 }
 
 export async function GET(request: Request) {
-  // Simple auth: check for secret header or query param
   const { searchParams } = new URL(request.url);
-  const key = searchParams.get('key');
   const limit = parseInt(searchParams.get('limit') || '0') || IDX_TICKERS.length;
 
-  console.log(`\n═══ RUMPUT ID — Yahoo Finance Scraper ═══`);
-  console.log(`Fetching ${Math.min(limit, IDX_TICKERS.length)} tickers...\n`);
+  // Deduplicate tickers
+  const uniqueTickers = [...new Set(IDX_TICKERS)];
+  const tickersToFetch = uniqueTickers.slice(0, limit);
 
-  const tickersToFetch = IDX_TICKERS.slice(0, limit);
+  console.log(`\n═══ RUMPUT ID — Yahoo Finance Scraper ═══`);
+  console.log(`Fetching ${tickersToFetch.length} unique tickers...\n`);
+
   const results: any[] = [];
   const errors: string[] = [];
 
-  // Fetch in batches of 5 to avoid rate limiting
-  for (let i = 0; i < tickersToFetch.length; i += 5) {
-    const batch = tickersToFetch.slice(i, i + 5);
+  // Fetch in batches of 10
+  for (let i = 0; i < tickersToFetch.length; i += 10) {
+
+    const batch = tickersToFetch.slice(i, i + 10);
     const batchResults = await Promise.allSettled(
       batch.map(t => fetchTickerData(t))
     );
@@ -179,7 +200,7 @@ export async function GET(request: Request) {
     }
 
     // Small delay between batches
-    if (i + 5 < tickersToFetch.length) {
+    if (i + 10 < tickersToFetch.length) {
       await new Promise(r => setTimeout(r, 500));
     }
   }
