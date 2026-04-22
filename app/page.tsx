@@ -1,11 +1,5 @@
-import { getEmitenList, getIntelReports } from "@/lib/data";
-import DashboardClient from "@/components/dashboard/DashboardClient";
-
 export const dynamic = 'force-dynamic';
 
-export default async function DashboardPage() {
-  const emitenList = await getEmitenList();
-  const intelList = await getIntelReports();
-
-  return <DashboardClient initialEmiten={emitenList} initialIntel={intelList} />;
+export default function DashboardPage() {
+  return <div style={{ padding: '100px', color: 'white', textAlign: 'center', fontSize: '24px' }}>DASHBOARD CONTENT IS HERE</div>;
 }
