@@ -1,7 +1,6 @@
 "use server";
 
 import { saveIntelLocal } from '@/lib/data';
-import { recalculateProphecy } from '@/lib/prophecy/engine';
 
 export async function submitIntelAction(formData: FormData) {
   const ticker = formData.get('ticker') as string;
