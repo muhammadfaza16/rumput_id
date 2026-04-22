@@ -35,7 +35,7 @@ export default async function SektorDetail({ params }: { params: Promise<{ slug:
         </div>
 
         <div className="sector-grid">
-          {emitenList.length > 0 ? emitenList.map(e => {
+          {emitenList.length > 0 ? emitenList.map((e: any) => {
             const prophecyStyle = PROPHECY_COLORS[e.prophecy as keyof typeof PROPHECY_COLORS] || PROPHECY_COLORS["HINDARI TOTAL"];
             
             return (
