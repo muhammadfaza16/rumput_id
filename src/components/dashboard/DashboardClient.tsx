@@ -142,7 +142,7 @@ export default function DashboardClient({ initialEmiten, initialIntel }: { initi
                 </tr>
               </thead>
               <tbody>
-                {filteredEmiten.map((e, i) => (
+                {filteredEmiten.map((e: any, i: number) => (
                   <tr key={i} className="table-row-hover" onClick={() => router.push(`/emiten/${e.ticker}`)} style={{ cursor: 'pointer' }}>
                     <td>
                       <div className="ticker-cell">
@@ -227,7 +227,7 @@ export default function DashboardClient({ initialEmiten, initialIntel }: { initi
               <span className="section-count">{initialIntel.length} laporan</span>
             </div>
             <div className="feed-grid">
-              {initialIntel.map((intel, i) => (
+              {initialIntel.map((intel: any, i: number) => (
                 <div key={i} className="intel-card">
                   <div className="intel-header">
                     <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>

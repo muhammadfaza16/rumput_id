@@ -121,7 +121,7 @@ export default async function EmitenDetail({ params }: { params: Promise<{ ticke
         </div>
         
         <div className="feed-grid">
-          {intelList.length > 0 ? intelList.map((intel, i) => (
+          {intelList.length > 0 ? intelList.map((intel: any, i: number) => (
             <div key={i} className="intel-card">
               <div className="intel-header">
                 <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
