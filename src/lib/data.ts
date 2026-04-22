@@ -10,17 +10,19 @@ async function getLocalDB() {
     const data = await fs.readFile(DB_PATH, 'utf-8');
     return JSON.parse(data);
   } catch (e) {
-    // Initialize programmatically from start if missing
-    const initialDB = { emiten: MOCK_EMITEN, intel: MOCK_INTEL };
-    await fs.writeFile(DB_PATH, JSON.stringify(initialDB, null, 2));
-    return initialDB;
+    // Return mock data directly if file is missing (especially on Vercel)
+    return { emiten: MOCK_EMITEN, intel: MOCK_INTEL };
   }
 }
 
 export async function saveIntelLocal(intelData: any) {
   const db = await getLocalDB();
   db.intel.unshift(intelData);
-  await fs.writeFile(DB_PATH, JSON.stringify(db, null, 2));
+  try {
+    await fs.writeFile(DB_PATH, JSON.stringify(db, null, 2));
+  } catch (e) {
+    console.log("Read-only filesystem detected, data won't persist on Vercel local_db.json");
+  }
 }
 
 export async function getEmitenList() {
