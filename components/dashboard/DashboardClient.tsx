@@ -56,7 +56,7 @@ function formatMcap(mcap: number | null | undefined): string {
 // ─── MAIN APP ─────────────────────────────────────────────────────────────────
 export default function DashboardClient({ initialEmiten, initialIntel }: { initialEmiten: any[], initialIntel: any[] }) {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState("screener");
+  const [activeTab, setActiveTab] = useState("emiten");
   const [activeSector, setActiveSector] = useState("Semua");
   const [activeFilter, setActiveFilter] = useState("Semua");
   const [searchQuery, setSearchQuery] = useState("");
@@ -64,9 +64,6 @@ export default function DashboardClient({ initialEmiten, initialIntel }: { initi
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
 
   const prophecyFilters = ["Semua", "HOLD KERAS", "POTENSI AKUISISI", "JEBAKAN BATMAN", "HINDARI TOTAL"];
-
-  // Collect unique sectors from data
-  const sectors = ["Semua", ...Array.from(new Set(initialEmiten.map((e: any) => e.sektor).filter(Boolean)))];
 
   // Filter & sort
   const filteredEmiten = initialEmiten
@@ -145,14 +142,14 @@ export default function DashboardClient({ initialEmiten, initialIntel }: { initi
 
       {/* Main Content */}
       <main className="main">
-        <div className="tabs">
-          <button className={`tab-btn ${activeTab === "screener" ? "active" : ""}`} onClick={() => setActiveTab("screener")}>SCREENER</button>
-          <button className={`tab-btn ${activeTab === "prophecy" ? "active" : ""}`} onClick={() => setActiveTab("prophecy")}>PROPHECY GUIDE</button>
-          <button className={`tab-btn ${activeTab === "feed" ? "active" : ""}`} onClick={() => setActiveTab("feed")}>INTEL FEED</button>
+        <div className="tabs" style={{ marginBottom: "20px" }}>
+          <button className={`tab-btn ${activeTab === "emiten" ? "active" : ""}`} onClick={() => setActiveTab("emiten")}>EMITEN</button>
+          <button className={`tab-btn ${activeTab === "intel" ? "active" : ""}`} onClick={() => setActiveTab("intel")}>INTEL</button>
+          <button className={`tab-btn ${activeTab === "guide" ? "active" : ""}`} onClick={() => setActiveTab("guide")}>GUIDE</button>
         </div>
 
-        {/* ── SCREENER TAB ── */}
-        {activeTab === "screener" && (
+        {/* ── EMITEN TAB ── */}
+        {activeTab === "emiten" && (
           <>
             {/* Search bar */}
             <div style={{ marginBottom: "12px" }}>
@@ -178,8 +175,9 @@ export default function DashboardClient({ initialEmiten, initialIntel }: { initi
               ))}
             </div>
 
-            <div style={{ fontSize: "10px", color: "var(--text-muted)", marginBottom: "8px", fontFamily: "var(--font-display)" }}>
-              {filteredEmiten.length} emiten · Click header to sort
+            <div style={{ fontSize: "10px", color: "var(--text-muted)", marginBottom: "8px", fontFamily: "var(--font-display)", display: "flex", justifyContent: "space-between" }}>
+              <span>{filteredEmiten.length} emiten · Click header to sort</span>
+              <span style={{ color: "var(--accent)", opacity: 0.8 }}>● LIVE DATA DARI BEI</span>
             </div>
 
             <table className="screener-table">
@@ -225,8 +223,41 @@ export default function DashboardClient({ initialEmiten, initialIntel }: { initi
           </>
         )}
 
-        {/* ── PROPHECY GUIDE TAB ── */}
-        {activeTab === "prophecy" && (
+        {/* ── INTEL TAB ── */}
+        {activeTab === "intel" && (
+          <>
+            <div className="section-header">
+              <span className="section-title">Intel Lapangan Terbaru</span>
+              <span className="section-count">{initialIntel.length} laporan</span>
+            </div>
+            <div className="feed-grid">
+              {initialIntel.map((intel: any, i: number) => (
+                <div key={i} className="intel-card">
+                  <div className="intel-header">
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+                      <span className="intel-ticker">{intel.ticker}</span>
+                      <span className="intel-categ">{intel.kategori}</span>
+                      <span className="intel-meta">
+                        <span>{intel.lokasi}</span>
+                        <span className="sep">·</span>
+                        <span>{intel.kota}</span>
+                      </span>
+                    </div>
+                    <span className="intel-time">{intel.waktu}</span>
+                  </div>
+                  <div className="intel-catatan">&ldquo;{intel.catatan}&rdquo;</div>
+                  <div className="intel-footer">
+                    <Stars rating={intel.rating} />
+                    <span className="intel-nick">— {intel.nickname || intel.nick || "Analis Anonim"}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+
+        {/* ── GUIDE TAB ── */}
+        {activeTab === "guide" && (
           <>
             <div style={{ marginBottom: "20px" }}>
               <div style={{ fontFamily: "var(--font-display)", fontSize: "11px", color: "var(--text-muted)", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: "8px" }}>
@@ -259,7 +290,7 @@ export default function DashboardClient({ initialEmiten, initialIntel }: { initi
               })}
             </div>
 
-            <div className="section-header">
+            <div className="section-header" style={{ marginTop: "30px" }}>
               <span className="section-title">Distribusi Saat Ini</span>
               <span className="section-count">{initialEmiten.length} emiten</span>
             </div>
@@ -279,40 +310,8 @@ export default function DashboardClient({ initialEmiten, initialIntel }: { initi
             })}
           </>
         )}
-
-        {/* ── FEED TAB ── */}
-        {activeTab === "feed" && (
-          <>
-            <div className="section-header">
-              <span className="section-title">Intel Lapangan Terbaru</span>
-              <span className="section-count">{initialIntel.length} laporan</span>
-            </div>
-            <div className="feed-grid">
-              {initialIntel.map((intel: any, i: number) => (
-                <div key={i} className="intel-card">
-                  <div className="intel-header">
-                    <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
-                      <span className="intel-ticker">{intel.ticker}</span>
-                      <span className="intel-categ">{intel.kategori}</span>
-                      <span className="intel-meta">
-                        <span>{intel.lokasi}</span>
-                        <span className="sep">·</span>
-                        <span>{intel.kota}</span>
-                      </span>
-                    </div>
-                    <span className="intel-time">{intel.waktu}</span>
-                  </div>
-                  <div className="intel-catatan">&ldquo;{intel.catatan}&rdquo;</div>
-                  <div className="intel-footer">
-                    <Stars rating={intel.rating} />
-                    <span className="intel-nick">— {intel.nick}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </>
-        )}
       </main>
     </div>
   );
 }
+
