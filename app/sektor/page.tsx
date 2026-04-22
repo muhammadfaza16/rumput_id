@@ -1,47 +1,70 @@
-import React from 'react';
-import Link from 'next/link';
-import { getIcon } from '@/components/ui/Doodles';
+import { getSektorSummary } from "@/lib/data";
+import { SEKTOR_LIST, PROPHECY_COLORS } from "@/data/mock";
+import Link from "next/link";
 
-const SECTORS = [
-  { nama: "Perbankan", slug: "perbankan", icon: "bank", desc: "Teori Satpam & Permen Lobi", count: 4 },
-  { nama: "F&B / Ritel", slug: "fnb", icon: "burger", desc: "Teori Tisu & Saus Sambal", count: 2 },
-  { nama: "Properti", slug: "properti", icon: "building", desc: "Teori Sabun Cuci Tangan", count: 2 },
-];
+export const dynamic = 'force-dynamic';
 
-export default function SektorList() {
+export default async function SektorPage() {
+  const sektorData = await getSektorSummary();
+
   return (
     <div className="layout">
-      <aside className="sidebar">
-        <Link href="/" className="sidebar-item" style={{ padding: '16px', color: 'var(--accent)', textDecoration: 'none' }}>
-          <span className="icon" style={{ display: 'flex' }}>{getIcon('arrow-left', { size: 16 })}</span>
-          <span style={{ flex: 1, fontFamily: 'var(--font-display)', fontSize: '10px', letterSpacing: '0.1em' }}>BACK TO SCREENER</span>
-        </Link>
-      </aside>
+      <main className="main" style={{ maxWidth: "900px", margin: "0 auto" }}>
+        <div style={{ fontFamily: "var(--font-display)", fontSize: "10px", color: "var(--text-muted)", letterSpacing: "0.15em", marginBottom: "6px" }}>CLASSIFIED / SEKTOR</div>
+        <h1 style={{ fontFamily: "var(--font-display)", fontSize: "20px", color: "var(--text-primary)", marginBottom: "4px" }}>
+          Peta Sektor BEI
+        </h1>
+        <p style={{ fontSize: "13px", color: "var(--text-secondary)", marginBottom: "24px", maxWidth: "600px" }}>
+          Overview seluruh sektor di Bursa Efek Indonesia berdasarkan data fundamental dan intel lapangan.
+        </p>
 
-      <main className="main" style={{ maxWidth: '1000px' }}>
-        <div style={{ marginBottom: '40px' }}>
-          <h1 className="section-title" style={{ fontSize: '24px', color: 'var(--text-primary)', marginBottom: '8px' }}>
-            Sektor Tersedia
-          </h1>
-          <p style={{ color: 'var(--text-secondary)' }}>
-            Kurasi 3 sektor paling krusial untuk analisis Prophecy. Sektor lain akan menyusul di Phase 3.
-          </p>
-        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: "12px" }}>
+          {sektorData.map((sektor: any, i: number) => {
+            const config = SEKTOR_LIST.find(s => s.nama === sektor.sektor);
+            const slug = config?.slug || sektor.sektor.toLowerCase().replace(/\s+/g, '-');
 
-        <div className="sector-grid">
-          {SECTORS.map(s => (
-            <Link href={`/sektor/${s.slug}`} key={s.slug} style={{ textDecoration: 'none' }}>
-              <div className="card-glow sector-card">
-                <div className="sector-icon" style={{ display: 'flex', color: 'var(--accent)' }}>{getIcon(s.icon, { size: 32 })}</div>
-                <h3 className="sector-name" style={{ color: 'var(--text-primary)' }}>{s.nama}</h3>
-                <p className="sector-teori">{s.desc}</p>
-                <div className="sector-stats">
-                  <span>{s.count} Emiten</span>
-                  <span>Lihat Detail →</span>
+            return (
+              <Link key={i} href={`/sektor/${slug}`} style={{ textDecoration: "none" }}>
+                <div className="card-glow" style={{ padding: "20px", transition: "all 0.2s ease", cursor: "pointer" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "12px" }}>
+                    <div>
+                      <div style={{ fontFamily: "var(--font-display)", fontSize: "14px", color: "var(--text-primary)", marginBottom: "2px" }}>
+                        {sektor.sektor}
+                      </div>
+                      {config?.teori && (
+                        <div style={{ fontFamily: "var(--font-display)", fontSize: "9px", color: "var(--accent)", opacity: 0.7 }}>{config.teori}</div>
+                      )}
+                    </div>
+                    <span style={{ fontFamily: "var(--font-data)", fontSize: "20px", color: "var(--accent)" }}>{sektor.count}</span>
+                  </div>
+
+                  {/* Metrics */}
+                  <div style={{ display: "flex", gap: "16px", marginBottom: "12px" }}>
+                    <div>
+                      <div style={{ fontFamily: "var(--font-display)", fontSize: "8px", color: "var(--text-muted)", letterSpacing: "0.1em" }}>AVG PBV</div>
+                      <div style={{ fontFamily: "var(--font-data)", fontSize: "14px", color: sektor.avgPbv < 1 ? "#00FF88" : "var(--text-primary)" }}>{sektor.avgPbv.toFixed(1)}x</div>
+                    </div>
+                    <div>
+                      <div style={{ fontFamily: "var(--font-display)", fontSize: "8px", color: "var(--text-muted)", letterSpacing: "0.1em" }}>AVG ROE</div>
+                      <div style={{ fontFamily: "var(--font-data)", fontSize: "14px", color: sektor.avgRoe > 15 ? "#00FF88" : "var(--text-primary)" }}>{sektor.avgRoe.toFixed(1)}%</div>
+                    </div>
+                  </div>
+
+                  {/* Prophecy Distribution Bar */}
+                  <div style={{ display: "flex", height: "4px", borderRadius: "2px", overflow: "hidden", gap: "1px" }}>
+                    {sektor.holdCount > 0 && <div style={{ flex: sektor.holdCount, background: PROPHECY_COLORS["HOLD KERAS"].text }} />}
+                    {sektor.akuisisiCount > 0 && <div style={{ flex: sektor.akuisisiCount, background: PROPHECY_COLORS["POTENSI AKUISISI"].text }} />}
+                    {sektor.jebakanCount > 0 && <div style={{ flex: sektor.jebakanCount, background: PROPHECY_COLORS["JEBAKAN BATMAN"].text }} />}
+                    {sektor.hindariCount > 0 && <div style={{ flex: sektor.hindariCount, background: PROPHECY_COLORS["HINDARI TOTAL"].text }} />}
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "space-between", marginTop: "6px" }}>
+                    <span style={{ fontSize: "9px", color: "#00FF88" }}>Hold {sektor.holdCount}</span>
+                    <span style={{ fontSize: "9px", color: "#FF4466" }}>Hindari {sektor.hindariCount}</span>
+                  </div>
                 </div>
-              </div>
-            </Link>
-          ))}
+              </Link>
+            );
+          })}
         </div>
       </main>
     </div>

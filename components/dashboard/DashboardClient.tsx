@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { PROPHECY_COLORS, PROPHECY_DESC } from "@/data/mock";
+import { PROPHECY_COLORS, PROPHECY_DESC, SEKTOR_LIST } from "@/data/mock";
 import { getIcon, DoodleStar } from "@/components/ui/Doodles";
 
 // ─── COMPONENTS ───────────────────────────────────────────────────────────────
@@ -14,7 +14,7 @@ function ScoreBar({ score, color }: { score: number; color?: string }) {
       <div className="score-bar-track">
         <div className="score-bar-fill" style={{ width: `${score}%`, background: color || barColor }} />
       </div>
-      <span className="score-num" style={{ color: color || barColor }}>{score}</span>
+      <span className="score-num" style={{ color: color || barColor }}>{Math.round(score)}</span>
     </div>
   );
 }
@@ -23,10 +23,7 @@ function ProphecyBadge({ label, emoji }: { label: keyof typeof PROPHECY_COLORS; 
   const style = PROPHECY_COLORS[label] || PROPHECY_COLORS["HINDARI TOTAL"];
   return (
     <span className="prophecy-badge" style={{
-      background: style.bg,
-      borderColor: style.border,
-      color: style.text,
-      boxShadow: style.glow,
+      background: style.bg, borderColor: style.border, color: style.text, boxShadow: style.glow,
     }}>
       <span>{getIcon(emoji, { size: 14 })}</span>
       <span>{label}</span>
@@ -44,24 +41,65 @@ function Stars({ rating }: { rating: number }) {
   );
 }
 
+function formatPrice(price: number | null | undefined): string {
+  if (price == null) return "—";
+  return new Intl.NumberFormat("id-ID").format(price);
+}
+
+function formatMcap(mcap: number | null | undefined): string {
+  if (mcap == null) return "—";
+  if (mcap >= 1_000_000_000) return `${(mcap / 1_000_000_000).toFixed(1)}T`;
+  if (mcap >= 1_000_000) return `${(mcap / 1_000_000).toFixed(1)}M`;
+  return `${(mcap / 1_000).toFixed(0)}K`;
+}
+
 // ─── MAIN APP ─────────────────────────────────────────────────────────────────
 export default function DashboardClient({ initialEmiten, initialIntel }: { initialEmiten: any[], initialIntel: any[] }) {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState("screener");
   const [activeSector, setActiveSector] = useState("Semua");
   const [activeFilter, setActiveFilter] = useState("Semua");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [sortBy, setSortBy] = useState<string>("prophecy_score");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
 
-  const sectors = ["Semua", "Perbankan", "Properti", "F&B"];
   const prophecyFilters = ["Semua", "HOLD KERAS", "POTENSI AKUISISI", "JEBAKAN BATMAN", "HINDARI TOTAL"];
 
-  const filteredEmiten = initialEmiten.filter(e => {
-    const sectorMatch = activeSector === "Semua" || e.sektor === activeSector;
-    const propMatch   = activeFilter === "Semua" || e.prophecy === activeFilter;
-    return sectorMatch && propMatch;
-  });
+  // Collect unique sectors from data
+  const sectors = ["Semua", ...Array.from(new Set(initialEmiten.map((e: any) => e.sektor).filter(Boolean)))];
 
-  const holdCount    = initialEmiten.filter(e => e.prophecy === "HOLD KERAS").length;
-  const akuisisiCount = initialEmiten.filter(e => e.prophecy === "POTENSI AKUISISI").length;
+  // Filter & sort
+  const filteredEmiten = initialEmiten
+    .filter((e: any) => {
+      const sectorMatch = activeSector === "Semua" || e.sektor === activeSector;
+      const propMatch = activeFilter === "Semua" || (e.prophecy_label || e.prophecy) === activeFilter;
+      const searchMatch = !searchQuery ||
+        e.ticker?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        e.nama?.toLowerCase().includes(searchQuery.toLowerCase());
+      return sectorMatch && propMatch && searchMatch;
+    })
+    .sort((a: any, b: any) => {
+      const va = a[sortBy] ?? 0;
+      const vb = b[sortBy] ?? 0;
+      return sortDir === "desc" ? vb - va : va - vb;
+    });
+
+  const holdCount = initialEmiten.filter((e: any) => (e.prophecy_label || e.prophecy) === "HOLD KERAS").length;
+  const akuisisiCount = initialEmiten.filter((e: any) => (e.prophecy_label || e.prophecy) === "POTENSI AKUISISI").length;
+
+  function toggleSort(field: string) {
+    if (sortBy === field) {
+      setSortDir(sortDir === "desc" ? "asc" : "desc");
+    } else {
+      setSortBy(field);
+      setSortDir("desc");
+    }
+  }
+
+  function SortIcon({ field }: { field: string }) {
+    if (sortBy !== field) return <span style={{ opacity: 0.3 }}>↕</span>;
+    return <span>{sortDir === "desc" ? "↓" : "↑"}</span>;
+  }
 
   return (
     <div className="layout">
@@ -80,38 +118,33 @@ export default function DashboardClient({ initialEmiten, initialIntel }: { initi
         ))}
 
         <div className="sidebar-label" style={{ marginTop: "16px" }}>Sektor</div>
-        {[
-          { name: "Perbankan", icon: "bank", count: 4, featured: true },
-          { name: "F&B / Ritel", icon: "burger", count: 4, featured: true },
-          { name: "Properti", icon: "building", count: 4, featured: true },
-          { name: "Teknologi", icon: "laptop", count: 0, featured: false },
-          { name: "Energi", icon: "lightning", count: 0, featured: false },
-          { name: "Tambang", icon: "pickaxe", count: 0, featured: false },
-          { name: "Farmasi", icon: "pill", count: 0, featured: false },
-          { name: "Telco", icon: "antenna", count: 0, featured: false },
-        ].map(s => (
-          <div key={s.name} className={`sidebar-item ${activeSector === s.name ? "active" : ""}`}
-            onClick={() => setActiveSector(activeSector === s.name ? "Semua" : s.name)}>
-            <span className="icon" style={{ display: 'flex' }}>{getIcon(s.icon, { size: 16 })}</span>
-            <span style={{ flex: 1, fontSize: "12px" }}>{s.name}</span>
-            <span className={`sidebar-badge ${s.featured ? "featured" : ""}`}>
-              {s.count > 0 ? s.count : "—"}
-            </span>
-          </div>
-        ))}
+        {SEKTOR_LIST.map((s: any) => {
+          const count = initialEmiten.filter((e: any) => e.sektor === s.nama).length;
+          return (
+            <div key={s.nama} className={`sidebar-item ${activeSector === s.nama ? "active" : ""}`}
+              onClick={() => setActiveSector(activeSector === s.nama ? "Semua" : s.nama)}>
+              <span className="icon" style={{ display: 'flex' }}>{getIcon(s.icon, { size: 16 })}</span>
+              <span style={{ flex: 1, fontSize: "12px" }}>{s.nama}</span>
+              <span className={`sidebar-badge ${count > 0 ? "featured" : ""}`}>
+                {count > 0 ? count : "—"}
+              </span>
+            </div>
+          );
+        })}
 
         <div style={{ marginTop: "auto", padding: "20px 0" }}>
           <div className="card-glow" style={{ padding: "16px", background: "rgba(0,255,136,0.03)", border: "1px solid rgba(0,255,136,0.1)" }}>
             <div style={{ fontSize: "10px", color: "var(--accent)", marginBottom: "4px" }}>BULLISH SIGNAL</div>
             <div style={{ fontSize: "18px", fontFamily: "var(--font-data)" }}>{holdCount + akuisisiCount} EMITEN</div>
-            <div style={{ fontSize: "9px", color: "var(--text-muted)", marginTop: "4px" }}>Screener mendeteksi akumulasi masif pada {sectors.length} sektor.</div>
+            <div style={{ fontSize: "9px", color: "var(--text-muted)", marginTop: "4px" }}>
+              {holdCount} Hold Keras · {akuisisiCount} Potensi Akuisisi
+            </div>
           </div>
         </div>
       </aside>
 
       {/* Main Content */}
       <main className="main">
-        {/* Header / Tabs */}
         <div className="tabs">
           <button className={`tab-btn ${activeTab === "screener" ? "active" : ""}`} onClick={() => setActiveTab("screener")}>SCREENER</button>
           <button className={`tab-btn ${activeTab === "prophecy" ? "active" : ""}`} onClick={() => setActiveTab("prophecy")}>PROPHECY GUIDE</button>
@@ -121,6 +154,22 @@ export default function DashboardClient({ initialEmiten, initialIntel }: { initi
         {/* ── SCREENER TAB ── */}
         {activeTab === "screener" && (
           <>
+            {/* Search bar */}
+            <div style={{ marginBottom: "12px" }}>
+              <input
+                type="text"
+                placeholder="Cari ticker atau nama emiten..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                style={{
+                  width: "100%", padding: "10px 16px", background: "var(--bg-secondary)",
+                  border: "1px solid var(--border-default)", borderRadius: "6px",
+                  color: "var(--text-primary)", fontFamily: "var(--font-data)", fontSize: "12px",
+                  outline: "none",
+                }}
+              />
+            </div>
+
             <div className="filters">
               {prophecyFilters.map(f => (
                 <button key={f} className={`filter-chip ${activeFilter === f ? "active" : ""}`} onClick={() => setActiveFilter(f)}>
@@ -129,16 +178,21 @@ export default function DashboardClient({ initialEmiten, initialIntel }: { initi
               ))}
             </div>
 
+            <div style={{ fontSize: "10px", color: "var(--text-muted)", marginBottom: "8px", fontFamily: "var(--font-display)" }}>
+              {filteredEmiten.length} emiten · Click header to sort
+            </div>
+
             <table className="screener-table">
               <thead>
                 <tr>
                   <th>EMITEN</th>
                   <th>PROPHECY</th>
-                  <th>FUND</th>
-                  <th>INTEL</th>
-                  <th>PBV</th>
-                  <th>ROE</th>
-                  <th style={{ textAlign: "right" }}>AKSI</th>
+                  <th onClick={() => toggleSort("fundamental_score")} style={{ cursor: "pointer" }}>FUND <SortIcon field="fundamental_score" /></th>
+                  <th onClick={() => toggleSort("intel_score")} style={{ cursor: "pointer" }}>INTEL <SortIcon field="intel_score" /></th>
+                  <th onClick={() => toggleSort("pbv")} style={{ cursor: "pointer" }}>PBV <SortIcon field="pbv" /></th>
+                  <th onClick={() => toggleSort("roe")} style={{ cursor: "pointer" }}>ROE <SortIcon field="roe" /></th>
+                  <th onClick={() => toggleSort("last_price")} style={{ cursor: "pointer" }}>PRICE <SortIcon field="last_price" /></th>
+                  <th style={{ textAlign: "right" }}>MCAP</th>
                 </tr>
               </thead>
               <tbody>
@@ -147,17 +201,23 @@ export default function DashboardClient({ initialEmiten, initialIntel }: { initi
                     <td>
                       <div className="ticker-cell">
                         <span className="ticker-badge">{e.ticker}</span>
-                        <span className="ticker-name">{e.nama}</span>
+                        <div>
+                          <span className="ticker-name">{e.nama}</span>
+                          <div style={{ fontSize: "9px", color: "var(--text-muted)", marginTop: "2px" }}>{e.sektor}</div>
+                        </div>
                       </div>
                     </td>
-                    <td><ProphecyBadge label={e.prophecy as any} emoji={e.emoji} /></td>
-                    <td><ScoreBar score={e.fundScore} /></td>
-                    <td><ScoreBar score={e.intelScore} /></td>
-                    <td className="data-val">{e.pbv}x</td>
-                    <td className="data-val" style={{ color: e.roe > 15 ? "var(--color-bull)" : "inherit" }}>{e.roe}%</td>
-                    <td style={{ textAlign: "right" }}>
-                      <button className="btn-icon">{getIcon('external', { size: 14 })}</button>
+                    <td><ProphecyBadge label={(e.prophecy_label || e.prophecy) as any} emoji={e.emoji} /></td>
+                    <td><ScoreBar score={e.fundamental_score || e.fundScore || 50} /></td>
+                    <td><ScoreBar score={e.intel_score || e.intelScore || 50} /></td>
+                    <td className="data-val" style={{ color: e.pbv != null && e.pbv < 1 ? "var(--color-bull)" : e.pbv != null && e.pbv > 5 ? "var(--color-bear)" : "inherit" }}>
+                      {e.pbv != null ? `${e.pbv.toFixed(1)}x` : "—"}
                     </td>
+                    <td className="data-val" style={{ color: e.roe != null && e.roe > 15 ? "var(--color-bull)" : e.roe != null && e.roe < 0 ? "var(--color-bear)" : "inherit" }}>
+                      {e.roe != null ? `${e.roe.toFixed(1)}%` : "—"}
+                    </td>
+                    <td className="data-val">{e.last_price ? `Rp ${formatPrice(e.last_price)}` : "—"}</td>
+                    <td className="data-val" style={{ textAlign: "right" }}>{formatMcap(e.market_cap)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -173,7 +233,7 @@ export default function DashboardClient({ initialEmiten, initialIntel }: { initi
                 THE PROPHECY ENGINE — Formula 50/50
               </div>
               <div style={{ fontSize: "13px", color: "var(--text-secondary)", lineHeight: "1.7", maxWidth: "600px" }}>
-                Setiap emiten mendapat dua nilai: <span style={{ color: "var(--accent)" }}>Fundamental Score</span> dari data keuangan resmi, dan <span style={{ color: "var(--accent)" }}>Intel Score</span> dari laporan komunitas di lapangan. Keduanya digabung dengan bobot 50/50 untuk menghasilkan label Prophecy.
+                Setiap emiten mendapat dua nilai: <span style={{ color: "var(--accent)" }}>Fundamental Score</span> dari data keuangan resmi BEI (PBV, ROE, NPL, DER), dan <span style={{ color: "var(--accent)" }}>Intel Score</span> dari laporan komunitas di lapangan. Keduanya digabung dengan bobot 50/50 untuk menghasilkan label Prophecy.
               </div>
             </div>
 
@@ -201,10 +261,11 @@ export default function DashboardClient({ initialEmiten, initialIntel }: { initi
 
             <div className="section-header">
               <span className="section-title">Distribusi Saat Ini</span>
+              <span className="section-count">{initialEmiten.length} emiten</span>
             </div>
             {Object.keys(PROPHECY_COLORS).map(label => {
-              const count = initialEmiten.filter(e => e.prophecy === label).length;
-              const pct   = (count / initialEmiten.length) * 100;
+              const count = initialEmiten.filter((e: any) => (e.prophecy_label || e.prophecy) === label).length;
+              const pct = initialEmiten.length > 0 ? (count / initialEmiten.length) * 100 : 0;
               const style = PROPHECY_COLORS[label as keyof typeof PROPHECY_COLORS];
               return (
                 <div key={label} style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "10px" }}>
@@ -241,7 +302,7 @@ export default function DashboardClient({ initialEmiten, initialIntel }: { initi
                     </div>
                     <span className="intel-time">{intel.waktu}</span>
                   </div>
-                  <div className="intel-catatan">"{intel.catatan}"</div>
+                  <div className="intel-catatan">&ldquo;{intel.catatan}&rdquo;</div>
                   <div className="intel-footer">
                     <Stars rating={intel.rating} />
                     <span className="intel-nick">— {intel.nick}</span>

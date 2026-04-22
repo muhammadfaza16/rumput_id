@@ -1,0 +1,39 @@
+name: IDX Daily Scrape
+
+on:
+  schedule:
+    # Run at 10:30 UTC = 17:30 WIB (30 min after market close)
+    - cron: '30 10 * * 1-5'
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: pip install -r scraper/requirements.txt
+
+      - name: Run IDX scraper
+        working-directory: scraper
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: python run_all.py
+
+      - name: Upload scraped data as artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: idx-data-${{ github.run_number }}
+          path: scraper/data/
+          retention-days: 7
